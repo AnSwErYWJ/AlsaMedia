@@ -1,3 +1,4 @@
 # ALSA
 alsa recorder and player
-libasound.so
+安装 libasound.so
+
