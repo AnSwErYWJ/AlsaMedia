@@ -6,21 +6,26 @@
  ************************************************************************/
 
 #include <stdio.h>
-#include <alsa/asoundlib.h>
 #include "public.h"
 
-static unsigned int channels = 1;
-static unsigned int sample_rate = 16000;
-static unsigned int frames = 32;
 static char *device = "default";
 
 int main(int argc,const char *argv[])
 {
 	if (argc != 2)
 	{
-		fprintf(stderr,"Usage:./aplayer xxx.pcm\n");
+		fprintf(stderr,"Usage:./aplayer audiofile\n");
 		return -1;
 	}
+
+	/* config */
+	audio_t *audio = (audio_t *)acalloc(1,sizeof(audio));
+	audio->channels = 1;
+	audio->sample_rate = 16000;
+	audio->frames = 32;
+	audio->format = SND_PCM_FORMAT_S16_LE;
+	audio->access = SND_PCM_ACCESS_RW_INTERLEAVED;
+	audio->sample = 16;
 
 	int rc;
     int dir;
@@ -40,11 +45,11 @@ int main(int argc,const char *argv[])
     snd_pcm_hw_params_any(handle, params); // set default params
 
     /* set params */
-    snd_pcm_hw_params_set_access(handle, params, SND_PCM_ACCESS_RW_INTERLEAVED); // interleaved mode
-    snd_pcm_hw_params_set_format(handle, params, SND_PCM_FORMAT_S16_LE); //format
-    snd_pcm_hw_params_set_channels(handle, params, channels);
-    snd_pcm_hw_params_set_rate_near(handle, params, &sample_rate, &dir);
-    snd_pcm_hw_params_set_period_size_near(handle, params, (snd_pcm_uframes_t *)&frames, &dir);
+    snd_pcm_hw_params_set_access(handle, params, audio->access); // interleaved mode
+    snd_pcm_hw_params_set_format(handle, params, audio->format); //format
+    snd_pcm_hw_params_set_channels(handle, params, audio->channels);
+    snd_pcm_hw_params_set_rate_near(handle, params, &(audio->sample_rate), &dir);
+    snd_pcm_hw_params_set_period_size_near(handle, params, (snd_pcm_uframes_t *)&(audio->frames), &dir);
 
     /* write the params to the driver */
     rc = snd_pcm_hw_params(handle, params);
@@ -55,8 +60,8 @@ int main(int argc,const char *argv[])
     }
 
     /* calloc buffer for on period */
-    snd_pcm_hw_params_get_period_size(params, (snd_pcm_uframes_t *)&frames, &dir);
-    size_t size = frames * channels * (16/8); //sample*channels*bytes/(one channel)
+    snd_pcm_hw_params_get_period_size(params, (snd_pcm_uframes_t *)&(audio->frames), &dir);
+    size_t size = audio->frames * audio->channels * (audio->sample/8); //sample*channels*bytes/(one channel)
     char *buffer = (char *) acalloc(1,size);
 
     FILE *fp = fopen(argv[1],"rb");
@@ -72,13 +77,13 @@ int main(int argc,const char *argv[])
     	rc = fread(buffer, 1, size, fp);
     	if (rc == 0) // not data
     	{
-    		fprintf(stderr, "end of file: %s\n",argv[1]);
+    		//fprintf(stderr, "end of file: %s\n",argv[1]);
     		break;
     	}
     	else if (rc != size)
     	{
     		if (feof(fp))
-    			fprintf(stderr, "end of file: %s\n",argv[1]);
+    		{}	//fprintf(stderr, "end of file: %s\n",argv[1]);
     		else
     			fprintf(stderr,"read file: %s error\n", argv[1]);
 
@@ -86,7 +91,7 @@ int main(int argc,const char *argv[])
     	}
 
     	/* write to driver for playback */
-    	rc = snd_pcm_writei(handle, buffer, frames);
+    	rc = snd_pcm_writei(handle, buffer, audio->frames);
     	if (rc == -EPIPE) // EPIPE means underrun
     	{
     		fprintf(stderr, "underrun occurred\n");
@@ -97,7 +102,7 @@ int main(int argc,const char *argv[])
     		fprintf(stderr,"error from writei: %s\n",snd_strerror(rc));
     		break;
     	}
-    	else if (rc != (int)frames)
+    	else if (rc != (int)audio->frames)
         	fprintf(stderr,"short write, write %d frames\n", rc);
     }
 
@@ -105,6 +110,7 @@ int main(int argc,const char *argv[])
     snd_pcm_drain(handle); // send audio over completely
     snd_pcm_close(handle);
     afree(buffer);
+    afree(audio);
 
     return 0;
 }

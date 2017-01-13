@@ -7,7 +7,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <alsa/asoundlib.h>
 #include "public.h"
 
 /* Memory alloc and free */
