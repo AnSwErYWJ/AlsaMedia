@@ -36,20 +36,63 @@ int main(int argc,const char *argv[])
 	rc = snd_pcm_open(&handle,device,SND_PCM_STREAM_PLAYBACK, 0); // open pcm device for playback
 	if (rc < 0)
 	{
-		fprintf(stderr,"unable to open pcm device: %s\n",snd_strerror(rc));
+		fprintf(stderr,"unable to open pcm device (%s)\n",snd_strerror(rc));
         return -1;
 	}
 
-	/* init params */
-    snd_pcm_hw_params_alloca(&params); // alloca params
-    snd_pcm_hw_params_any(handle, params); // set default params
+	/* initialize params */
+    rc = snd_pcm_hw_params_malloc(&params); // malloc for params
+    if (rc < 0)
+    {
+    	fprintf(stderr,"unable allocate hardware parameter structure (%s)\n",snd_strerror(rc));
+        return -1;
+    }
+
+    rc = snd_pcm_hw_params_any(handle, params); // initialize params
+    if (rc < 0)
+    {
+    	fprintf(stderr,"cannot initialize hardware parameter structure (%s)\n",snd_strerror(rc));
+        return -1;
+    }
 
     /* set params */
-    snd_pcm_hw_params_set_access(handle, params, audio->access); // interleaved mode
-    snd_pcm_hw_params_set_format(handle, params, audio->format); //format
-    snd_pcm_hw_params_set_channels(handle, params, audio->channels);
-    snd_pcm_hw_params_set_rate_near(handle, params, &(audio->sample_rate), &dir);
-    snd_pcm_hw_params_set_period_size_near(handle, params, (snd_pcm_uframes_t *)&(audio->frames), &dir);
+    rc = snd_pcm_hw_params_set_access(handle, params, audio->access); // set access type
+    if (rc < 0)
+    {
+    	fprintf(stderr,"cannot set access type (%s)\n",snd_strerror(rc));
+        return -1;
+    }
+    rc = snd_pcm_hw_params_set_format(handle, params, audio->format); //set format
+    if (rc < 0)
+    {
+    	fprintf(stderr,"cannot set sample format (%s)\n",snd_strerror(rc));
+        return -1;
+    }
+    rc = snd_pcm_hw_params_set_channels(handle, params, audio->channels); //set channel(s)
+    if (rc < 0)
+    {
+    	fprintf(stderr,"cannot set channel count (%s)\n",snd_strerror(rc));
+        return -1;
+    }
+    rc = snd_pcm_hw_params_set_rate_near(handle, params, &(audio->sample_rate), &dir);// set sample rate
+    if (rc < 0)
+    {
+    	fprintf(stderr,"cannot set sample rate (%s)\n",snd_strerror(rc));
+        return -1;
+    }
+    dir = audio->frames * 2;
+    rc = snd_pcm_hw_params_set_buffer_size_near(handle, params, &dir);
+    if (rc < 0)
+    {
+    	fprintf(stderr,"cannot set sample rate (%s)\n",snd_strerror(rc));
+        return -1;
+    }
+    rc = snd_pcm_hw_params_set_period_size_near(handle, params, (snd_pcm_uframes_t *)&(audio->frames), &dir);
+    if (rc < 0)
+    {
+    	fprintf(stderr,"cannot set sample rate (%s)\n",snd_strerror(rc));
+        return -1;
+    }
 
     /* write the params to the driver */
     rc = snd_pcm_hw_params(handle, params);
@@ -58,6 +101,8 @@ int main(int argc,const char *argv[])
         fprintf(stderr, "unable to set hw parameters: %s\n",snd_strerror(rc));
         return -1;
     }
+
+    printf("Check if hardware supports pause: %d\n", snd_pcm_hw_params_can_pause(params));
 
     /* calloc buffer for on period */
     snd_pcm_hw_params_get_period_size(params, (snd_pcm_uframes_t *)&(audio->frames), &dir);
