@@ -30,7 +30,7 @@ int main(int argc,const char *argv[])
 	int rc;
     int dir;
 	snd_pcm_t *handle;
-	snd_pcm_hw_params_t *params;
+	snd_pcm_hw_params_t *hw_params;
 
 	/* open devices */
 	rc = snd_pcm_open(&handle,device,SND_PCM_STREAM_PLAYBACK, 0); // open pcm device for playback
@@ -40,72 +40,130 @@ int main(int argc,const char *argv[])
         return -1;
 	}
 
-	/* initialize params */
-    rc = snd_pcm_hw_params_malloc(&params); // malloc for params
+	/* hardware params */
+    rc = snd_pcm_hw_params_malloc(&hw_params); // malloc for params
     if (rc < 0)
     {
     	fprintf(stderr,"unable allocate hardware parameter structure (%s)\n",snd_strerror(rc));
         return -1;
     }
 
-    rc = snd_pcm_hw_params_any(handle, params); // initialize params
+    rc = snd_pcm_hw_params_any(handle, hw_params); // initialize params
     if (rc < 0)
     {
     	fprintf(stderr,"cannot initialize hardware parameter structure (%s)\n",snd_strerror(rc));
         return -1;
     }
 
-    /* set params */
-    rc = snd_pcm_hw_params_set_access(handle, params, audio->access); // set access type
+    rc = snd_pcm_hw_params_set_access(handle, hw_params, audio->access); // set access type
     if (rc < 0)
     {
     	fprintf(stderr,"cannot set access type (%s)\n",snd_strerror(rc));
         return -1;
     }
-    rc = snd_pcm_hw_params_set_format(handle, params, audio->format); //set format
+    rc = snd_pcm_hw_params_set_format(handle, hw_params, audio->format); //set format
     if (rc < 0)
     {
     	fprintf(stderr,"cannot set sample format (%s)\n",snd_strerror(rc));
         return -1;
     }
-    rc = snd_pcm_hw_params_set_channels(handle, params, audio->channels); //set channel(s)
+    rc = snd_pcm_hw_params_set_channels(handle, hw_params, audio->channels); //set channel(s)
     if (rc < 0)
     {
     	fprintf(stderr,"cannot set channel count (%s)\n",snd_strerror(rc));
         return -1;
     }
-    rc = snd_pcm_hw_params_set_rate_near(handle, params, &(audio->sample_rate), &dir);// set sample rate
+    rc = snd_pcm_hw_params_set_rate_near(handle, hw_params, &(audio->sample_rate), &dir);// set sample rate
     if (rc < 0)
     {
     	fprintf(stderr,"cannot set sample rate (%s)\n",snd_strerror(rc));
         return -1;
     }
-    dir = audio->frames * 2;
-    rc = snd_pcm_hw_params_set_buffer_size_near(handle, params, &dir);
+    /*dir = audio->frames * 2;
+    rc = snd_pcm_hw_params_set_buffer_size_near(handle, hw_params, &dir);
     if (rc < 0)
     {
     	fprintf(stderr,"cannot set sample rate (%s)\n",snd_strerror(rc));
         return -1;
-    }
-    rc = snd_pcm_hw_params_set_period_size_near(handle, params, (snd_pcm_uframes_t *)&(audio->frames), &dir);
-    if (rc < 0)
-    {
-    	fprintf(stderr,"cannot set sample rate (%s)\n",snd_strerror(rc));
-        return -1;
-    }
+    }*/
 
-    /* write the params to the driver */
-    rc = snd_pcm_hw_params(handle, params);
+    audio->frames = 32;
+    rc = snd_pcm_hw_params_set_period_size_near(handle, hw_params, (snd_pcm_uframes_t *)&(audio->frames), &dir);
+    if (rc < 0)
+    {
+    	fprintf(stderr,"cannot set sample rate (%s)\n",snd_strerror(rc));
+        return -1;
+    }
+    printf("hello\n");
+    rc = snd_pcm_hw_params(handle, hw_params);
     if (rc < 0)
     {
         fprintf(stderr, "unable to set hw parameters: %s\n",snd_strerror(rc));
         return -1;
     }
 
-    printf("Check if hardware supports pause: %d\n", snd_pcm_hw_params_can_pause(params));
+    printf("Check if hardware supports pause: %d\n", snd_pcm_hw_params_can_pause(hw_params));
 
-    /* calloc buffer for on period */
-    snd_pcm_hw_params_get_period_size(params, (snd_pcm_uframes_t *)&(audio->frames), &dir);
+    snd_pcm_hw_params_get_period_size(hw_params, (snd_pcm_uframes_t *)&(audio->frames), &dir);
+    snd_pcm_hw_params_free (hw_params);
+
+
+
+    /* software params */
+    snd_pcm_sw_params_t *sw_params;
+
+    rc = snd_pcm_sw_params_malloc(&sw_params); // malloc for params
+    if (rc < 0)
+    {
+    	fprintf(stderr,"unable allocate software parameter structure (%s)\n",snd_strerror(rc));
+        return -1;
+    }
+    rc = snd_pcm_sw_params_current(handle, sw_params); // initialize params
+    if (rc < 0)
+    {
+    	fprintf(stderr,"cannot initialize software parameters structure (%s)\n",snd_strerror(rc));
+        return -1;
+    }
+    rc = snd_pcm_sw_params_set_start_threshold(handle, sw_params, audio->frames); // start playing when one period has been written
+    if (rc < 0)
+    {
+    	fprintf(stderr,"cannot set start mode (%s)\n",snd_strerror(rc));
+        return -1;
+    }
+
+    snd_pcm_uframes_t boundary;
+    rc = snd_pcm_sw_params_get_boundary(sw_params,&boundary); // get boundary for ring pointers from a software configuration container.
+    if (rc < 0)
+    {
+    	fprintf(stderr,"cannot get boundary (%s)\n",snd_strerror(rc));
+        return -1;
+    }
+
+    rc = snd_pcm_sw_params_set_stop_threshold(handle, sw_params, boundary); // disable underrun reporting
+    if (rc < 0)
+	{
+		fprintf(stderr,"cannot set stop threshold inside a software configuration container (%s)\n",snd_strerror(rc));
+		return -1;
+	}
+
+    rc = snd_pcm_sw_params_set_silence_size(handle, sw_params, boundary ); // play silence when there is an underrun
+    if (rc < 0)
+	{
+		fprintf(stderr,"cannot set silence size inside a software configuration container (%s)\n",snd_strerror(rc));
+		return -1;
+	}
+
+    rc = snd_pcm_sw_params(handle, sw_params);
+    if (rc < 0)
+    {
+        fprintf(stderr, "unable to set sw parameters: %s\n",snd_strerror(rc));
+        return -1;
+    }
+
+    snd_pcm_sw_params_free(sw_params);
+
+
+
     size_t size = audio->frames * audio->channels * (audio->sample/8); //sample*channels*bytes/(one channel)
     char *buffer = (char *) acalloc(1,size);
 
