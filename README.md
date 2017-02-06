@@ -44,6 +44,7 @@ AlsaMedia includes player and recorder  realized with [Alsa](http://www.alsa-pro
 + Bash Shell
 
 ## Todo
+- [ ] pause,resume
 - [ ] support mp3 decode.
 - [ ] dynamic configuration.
 
@@ -60,7 +61,7 @@ AlsaMedia includes player and recorder  realized with [Alsa](http://www.alsa-pro
 [![GPL Licence](https://badges.frapsoft.com/os/gpl/gpl.svg?v=103)](https://opensource.org/licenses/GPL-3.0/)
 
     AudioResamplerate
-    Copyright (C) 2016-2017  AnSwErYWJ
+    Copyright (C) 2017  AnSwErYWJ
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
