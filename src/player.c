@@ -73,29 +73,21 @@ int main(int argc,const char *argv[])
     	fprintf(stderr,"cannot set channel count (%s)\n",snd_strerror(rc));
         return -1;
     }
-    rc = snd_pcm_hw_params_set_rate_near(handle, hw_params, &(audio->sample_rate), &dir);// set sample rate
+    rc = snd_pcm_hw_params_set_rate_near(handle, hw_params, &(audio->sample_rate), &dir); // set sample rate
     if (rc < 0)
     {
     	fprintf(stderr,"cannot set sample rate (%s)\n",snd_strerror(rc));
         return -1;
     }
-    /*dir = audio->frames * 2;
-    rc = snd_pcm_hw_params_set_buffer_size_near(handle, hw_params, &dir);
-    if (rc < 0)
-    {
-    	fprintf(stderr,"cannot set sample rate (%s)\n",snd_strerror(rc));
-        return -1;
-    }*/
 
-    audio->frames = 32;
-    rc = snd_pcm_hw_params_set_period_size_near(handle, hw_params, (snd_pcm_uframes_t *)&(audio->frames), &dir);
+    rc = snd_pcm_hw_params_set_period_size_near(handle, hw_params, (snd_pcm_uframes_t *)&(audio->frames), &dir); // set period size
     if (rc < 0)
     {
-    	fprintf(stderr,"cannot set sample rate (%s)\n",snd_strerror(rc));
+    	fprintf(stderr,"cannot set period size (%s)\n",snd_strerror(rc));
         return -1;
     }
-    printf("hello\n");
-    rc = snd_pcm_hw_params(handle, hw_params);
+
+    rc = snd_pcm_hw_params(handle, hw_params); // set hw parameters
     if (rc < 0)
     {
         fprintf(stderr, "unable to set hw parameters: %s\n",snd_strerror(rc));
@@ -104,9 +96,9 @@ int main(int argc,const char *argv[])
 
     printf("Check if hardware supports pause: %d\n", snd_pcm_hw_params_can_pause(hw_params));
 
-    snd_pcm_hw_params_get_period_size(hw_params, (snd_pcm_uframes_t *)&(audio->frames), &dir);
-    snd_pcm_hw_params_free (hw_params);
+    snd_pcm_hw_params_get_period_size(hw_params, (snd_pcm_uframes_t *)&(audio->frames), &dir); // get period numbers(samples)
 
+    snd_pcm_hw_params_free (hw_params);
 
 
     /* software params */
@@ -153,7 +145,7 @@ int main(int argc,const char *argv[])
 		return -1;
 	}
 
-    rc = snd_pcm_sw_params(handle, sw_params);
+    rc = snd_pcm_sw_params(handle, sw_params); // set sw params
     if (rc < 0)
     {
         fprintf(stderr, "unable to set sw parameters: %s\n",snd_strerror(rc));
