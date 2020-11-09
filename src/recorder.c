@@ -19,7 +19,7 @@ int main(int argc,const char *argv[])
 	}
 
 	/* config */
-	audio_t *audio = (audio_t *)acalloc(1,sizeof(audio));
+	audio_t *audio = (audio_t *)acalloc(1,sizeof(audio_t));
 	audio->channels = 1;
 	audio->sample_rate = 16000;
 	audio->frames = 32;
