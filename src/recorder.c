@@ -192,6 +192,9 @@ END:
         free(buffer);
         buffer = NULL;
     }
+    
+    /*  releases all resources of the global configuration tree */
+    snd_config_update_free_global();
 
     return rc;
 }

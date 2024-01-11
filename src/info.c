@@ -137,13 +137,16 @@ static void _alsa_list_device(snd_pcm_stream_t stream)
         }
 
         snd_ctl_close(handle);
-    
+
     next_card:
         if (snd_card_next(&card) < 0)
         {
             break;
         }
     }
+
+    /*  releases all resources of the global configuration tree */
+    snd_config_update_free_global();
 
     printf("\n");
 }
@@ -163,7 +166,7 @@ VISIBLE_ATTR void alsa_list_device(void)
 
     stream = SND_PCM_STREAM_CAPTURE;
     printf("List of %s Hardware Devices\n", snd_pcm_stream_name(stream));
-    _alsa_list_device(stream);    
+    _alsa_list_device(stream);
 
     printf("\n");
 }
